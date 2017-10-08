@@ -7,15 +7,16 @@ import org.apache.ibatis.session.SqlSessionFactory;
 import org.apache.ibatis.type.JdbcType;
 import org.mybatis.spring.SqlSessionFactoryBean;
 import org.mybatis.spring.SqlSessionTemplate;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.jdbc.datasource.init.DataSourceInitializer;
+import org.springframework.jdbc.datasource.init.DatabasePopulator;
+import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 
 /**
  *
@@ -33,6 +34,12 @@ public class ApplicationConfig {
     String datasourceUsername;
     @Value("${datasource.password}")
     String datasourcePassword;
+
+    @Value("classpath:persistence/mappers/BlogMapper.xml")
+    private Resource blogMapper;
+
+    @Value("#{'${datasource.schema}'.split(',')}")
+    private Resource [] schemaScript;
 
     @Bean
     public static PropertySourcesPlaceholderConfigurer propertySourcesPlaceholderConfigurer() {
@@ -53,6 +60,20 @@ public class ApplicationConfig {
     }
 
     @Bean
+    public DataSourceInitializer dataSourceInitializer(final DataSource dataSource) {
+        final DataSourceInitializer initializer = new DataSourceInitializer();
+        initializer.setDataSource(dataSource);
+        initializer.setDatabasePopulator(databasePopulator());
+        return initializer;
+    }
+
+    private DatabasePopulator databasePopulator() {
+        final ResourceDatabasePopulator populator = new ResourceDatabasePopulator();
+        populator.addScripts(schemaScript);
+        return populator;
+    }
+
+    @Bean
     public DataSourceTransactionManager transactionManager(DataSource dataSource) {
         return new DataSourceTransactionManager(dataSource);
     }
@@ -61,8 +82,8 @@ public class ApplicationConfig {
     public SqlSessionFactoryBean sqlSessionFactoryBean(DataSource dataSource) {
         SqlSessionFactoryBean sqlSessionFactoryBean = new SqlSessionFactoryBean();
         sqlSessionFactoryBean.setDataSource(dataSource);
-        Resource r = new ClassPathResource("persistence/mappers/BlogMapper.xml");
-        sqlSessionFactoryBean.setMapperLocations(new Resource [] {r});
+
+        sqlSessionFactoryBean.setMapperLocations(new Resource[]{blogMapper});
         return sqlSessionFactoryBean;
     }
 
